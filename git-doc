@@ -1,0 +1,139 @@
+mkdir git-real
+cd git-real
+git init
+git add README
+git commit -m 'First Commit'
+touch Test
+git add Test
+git commit -m 'First Commit'
+git remote add origin https://github.com/Hinalsanghvi/first-git.git
+git push -u origin master
+cd existing_git_repo
+
+
+
+cd foldername
+ls check list of files that folder
+git status
+modify nay file then check status agaAIN
+git commit -a -m "modify readme"
+
+not sure -- git push -u origin master
+
+User Email
+git config --global user.name "Gregg Pollack"
+$ git config --global user.email "gregg@codeschool.com"
+
+Changing log color
+
+git config --global color.ui true
+$ git log
+git log --oneline --stat
+
+git log --oneline --graph
+
+
+minute hour day ago log
+git log --until=1.minute.ago
+until
+$ git log --since=1.day.ago
+
+uncommited changes
+git diff HEAD
+
+
+difference between one minute to ago
+$ git diff --since=1.week.ago --until=1.minute.ago
+
+REMOVING FILES
+$ git rm README.txt
+
+
+UNTRACKING FILES
+.gitignore
+logs/*.log
+will ignore all .log files inside the logs directory
+$ git add .gitignore
+
+Aliases
+git st git status
+git co git checkout
+git br git branch
+git ci git commit
+
+make a branch: git branch {branch-name}
+
+check branches: git brANCH
+
+switched to branch git checkout { branch name}
+su[ppose master to branch1 you have to type git checkout branch1
+
+
+how to change message order
+REORDER COMMITS : but lots of data display and no way to exit from that
+
+CHANGE MESSAGES
+editor
+pick 1ee9572 Add capybaras page.
+pick 74e6f3e Add capybaras to index.
+reword 9afe987 Actually, the plural is 'capybara'.
+
+Change "pick" to "reword"
+
+git stash apply use: (normally tracked files get stashed)
+Stashing takes the dirty state of your working directory — that is, your modified tracked files and staged changes — and saves it on a stack of unfinished changes that you can reapply at any time.
+
+git stash list, inspected with
+git stash show, and restored (potentially on top of a different commit) with
+git stash apply. Calling git stash without any arguments is equivalent to 
+git stash save
+
+git stash drop
+git stash pop
+
+cherry-pick
+
+git cherry-pick [--edit] [-n] [-m parent-number] [-s] [-x] [--ff] [-S[<keyid>]] <commit>… 
+git cherry-pick --continue 
+git cherry-pick --quit
+git cherry-pick --abort
+
+
+
+Firstly make repository 
+
+1) git init demo
+2) make branch git branch staging (make sure both local and live branch name are same.)
+3)check status or list if you want to see or check
+4)git add .(if you copy file in repository directly from back end then add it using this command)
+5)git commit -m "message"
+6)check branch and switch branch git checkout staging..
+7)push branch git push origin staging (you can now see your file in your live branch)
+8)git checkout master (if you want  that file in master or other branch )
+9)git merge staging (merge both branch)
+
+
+make repository and to go into that
+mkdir store
+cd store
+git init
+
+UNDOING A COMMIT
+Whoops, we forgot something on that commit. Reset into staging
+$ git reset --soft HEAD^
+
+$ git reset --hard HEAD^         Undo last commit and all changes
+$ git reset --hard HEAD^^        Undo last 2 commits and all changes
+
+live to local push
+git remote set-url origin  https://github.com/Hinalsanghvi/store.git
+git remote set-url origin /home/agc-linux/store
+git remote -v
+git push , pull , fetch
+git push origin current/store-branch
+
+Adding tag
+git tag
+git tag -a v0.0.3 -m "version v0.0.3"
+git push --tags
+

@@ -2,4 +2,5 @@
 
 get_header();
 
+/* for local*/
 ?>
