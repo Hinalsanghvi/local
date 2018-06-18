@@ -1,0 +1,568 @@
+code  for function file..partner
+
+/*for text to visual mode*/
+function override_mce_options($initArray) 
+{
+  $opts = '*[*]';
+  $initArray['valid_elements'] = $opts;
+  $initArray['extended_valid_elements'] = $opts;
+  return $initArray;
+ }
+ add_filter('tiny_mce_before_init', 'override_mce_options'); 
+
+/* Added meta box for media attachmenrt*/
+function attachment_fields_to_edit_islogoimage( $form_fields, $post ) {
+    $islogo = (bool) get_post_meta($post->ID, '_islogo', true);
+    $checked = ($islogo) ? 'checked' : '';
+
+    $form_fields['islogo'] = array(
+        'label' => 'Logo Carousel',
+        'input' => 'html',
+        'html' => "<input type='checkbox' {$checked} name='attachments[{$post->ID}][islogo]' id='attachments[{$post->ID}][islogo]' />",
+        'value' => $islogo,
+        'helps' => 'Should this image appear as a carousel slider Logo ?'
+    );
+
+   $form_fields["logo_number"] = array(
+		"label" => __("Logo Number"),
+		"input" => "text", // this is default if "input" is omitted
+		"value" => esc_attr( get_post_meta($post->ID, "_logo_number", true) ),
+		"helps" => __("The slider logo sequence number."),
+	);
+
+
+    return $form_fields;
+
+}
+add_filter( 'attachment_fields_to_edit', 'attachment_fields_to_edit_islogoimage', null, 2 );
+
+function attachment_fields_to_save_islogoimage($post, $attachment) {
+    $islogo = ($attachment['islogo'] == 'on') ? '1' : '0';
+    update_post_meta($post['ID'], '_islogo', $islogo);  
+    if ( isset( $attachment['logo_number'] ) )
+	update_post_meta( $post['ID'], '_logo_number', esc_attr($attachment['logo_number']) );
+	  return $post;  
+
+}
+add_filter( 'attachment_fields_to_save', 'attachment_fields_to_save_islogoimage', null, 2 );
+
+/*Shortcode for carousel logo slider */
+function show_logo(){
+			
+			$query_args = array(
+				'post_status' => 'any',
+				'post_type'   => 'attachment',
+				'posts_per_page' => -1, 
+                'offset'         => 0, 
+				'meta_key'       => '_logo_number', 
+				'orderby'    => 'meta_value_num',       // Or post by custom field
+				'order'      => 'ASC',
+				'meta_query'  => array(
+					array(
+						'value'   => '1',
+						'key'     => '_islogo',
+						'compare' => '='
+					),
+				)
+			);
+			$image_query = new WP_Query( $query_args );
+			 global $post;
+			 $html = '';
+			if( $image_query->have_posts() ){
+			$html .= '<div class="slider">';
+			   while( $image_query->have_posts() ) {
+			      $image_query->the_post();
+			      $imgurl = wp_get_attachment_url( get_the_ID() );
+			      $alt_text = get_post_meta($post->ID, '_wp_attachment_image_alt', true);$html .= '<div>';
+			      $html .= '<img class="portfolio" alt="'.$alt_text.'" src="'.$imgurl.'" />';
+			      $html .= '</div>';
+			  } 
+			 $html .= '</div>';
+			
+			} 
+			wp_reset_query();
+ 			return $html ;
+
+}	 
+add_shortcode('carousellogo','show_logo');
+
+// Disable support for comments and in attachment post types
+function filter_media_comment_status( $open, $post_id ) {
+    $post = get_post( $post_id );
+    if( $post->post_type == 'attachment' ) {
+        return false;
+    }
+    return $open;
+}
+add_filter( 'comments_open', 'filter_media_comment_status', 10 , 2 );
+
+// Close comments on the front-end
+function df_disable_comments_status() {
+	return false;
+}
+
+
+/*TO remove p tag from content*/
+remove_filter( 'the_content', 'wpautop' );
+remove_filter( 'the_excerpt', 'wpautop' );
+
+// Creates Our Custom Post Type ////////////////////////////////
+function success_stories_init() {
+    $args = array(
+      'label' => 'Success Stories',
+        'public' => true,
+        /*'hierarchical' => true, */// Allows your posts to behave like Hierarchy Pages
+        'has_archive' => false,
+        'show_ui' => true,
+        'capability_type' => 'post',
+        'rewrite' => array('slug' => 'success-stories'),// change this if necessary
+        'query_var' => true,
+        'menu_icon' => 'dashicons-chart-line',
+        'supports' => array(
+            'title',
+            'editor',
+            'thumbnail',
+            'excerpt',
+            'custom-fields',
+            'page-attributes',)
+        );
+    register_post_type( 'success-stories', $args );
+}
+add_action( 'init', 'success_stories_init' );
+
+//To get image alt from custom field value url
+function pippin_get_image_id($image_url) {
+    global $wpdb;
+    $attachment = $wpdb->get_col($wpdb->prepare("SELECT ID FROM $wpdb->posts WHERE guid='%s';", $image_url )); 
+        return $attachment[0]; 
+}
+
+//Featured Image Meta Box For custom Post type
+/**
+ * Create Area icon image metabox
+ */
+
+function lacuna2_success_story_bg( $post ) {
+    wp_nonce_field( 'success_story_bg_submit', 'success_story_bg_nonce' );
+    $lacuna2_stored_meta = get_post_meta( $post->ID ); ?>
+
+    <p>
+      
+	<img style="max-width:200px;height:auto;" id="meta-image-preview" src="<?php if ( isset ( $lacuna2_stored_meta['meta-image'] ) ){ echo $lacuna2_stored_meta['meta-image'][0]; } ?>" />
+        <input type="text" name="meta-image" id="meta-image" class="meta_image" value="<?php if ( isset ( $lacuna2_stored_meta['meta-image'] ) ){ echo $lacuna2_stored_meta['meta-image'][0]; } ?>" />
+        <input type="button" id="meta-image-button" class="button" value="Choose or Upload an Image" />
+    </p>
+<script>
+jQuery('#meta-image-button').click(function() {
+
+    var send_attachment_bkp = wp.media.editor.send.attachment;
+
+    wp.media.editor.send.attachment = function(props, attachment) {
+
+        jQuery('#meta-image').val(attachment.url);
+	jQuery('#meta-image-preview').attr('src',attachment.url);
+        wp.media.editor.send.attachment = send_attachment_bkp;
+    }
+
+    wp.media.editor.open();
+
+    return false;
+});
+</script>
+<?php    
+
+}
+
+/**
+ * Add Case Study background image metabox to the back end of Case Study posts
+ */
+
+function lacuna2_add_meta_boxes() {
+    add_meta_box( 'success-story-bg', 'First Image', 'lacuna2_success_story_bg', 'success-stories', 'side', 'low' );
+}
+add_action( 'add_meta_boxes', 'lacuna2_add_meta_boxes' );
+
+/**
+ * Save background image metabox for Case Study posts
+ */
+
+function save_success_story_bg_meta_box( $post_id ) {
+    $is_autosave = wp_is_post_autosave( $post_id );
+    $is_revision = wp_is_post_revision( $post_id );
+    $is_valid_nonce = ( isset( $_POST[ 'success_story_bg_nonce' ] ) && wp_verify_nonce( $_POST[ 'success_story_bg_nonce' ], 'success_story_bg_submit' ) ) ? 'true' : 'false';
+
+    // Exits script depending on save status
+    if ( $is_autosave || $is_revision || !$is_valid_nonce  ) {
+        return;
+    }
+
+    // Checks for input and sanitizes/saves if needed
+    if( isset( $_POST[ 'meta-image' ] ) ) {
+        update_post_meta( $post_id, 'meta-image', $_POST[ 'meta-image' ] );
+    }
+}
+
+add_action( 'save_post', 'save_success_story_bg_meta_box' );
+
+/**
+ * Adds a meta box to the post editing screen
+ */
+function prfx_featured_meta() {
+    add_meta_box( 'prfx_meta', __( 'Featured Posts', 'prfx-textdomain' ), 'prfx_meta_callback', 'post', 'normal', 'high' );
+    add_meta_box( 'prfx_success', 'Want Sucess Stories Section?', 'prfx_success_callback', 'page', 'side', 'high' );
+}
+add_action( 'add_meta_boxes', 'prfx_featured_meta' );
+
+/**
+ * Outputs the content of the meta box
+ */
+
+function prfx_meta_callback( $post ) {
+    wp_nonce_field( basename( __FILE__ ), 'prfx_nonce' );
+    $prfx_stored_meta = get_post_meta( $post->ID );
+    ?>
+
+ <p>
+    <span class="prfx-row-title"><?php _e( 'Check if this is a featured post: ', 'prfx-textdomain' )?></span>
+    <div class="prfx-row-content">
+        <label for="featured-checkbox">
+            <input type="checkbox" name="featured-checkbox" id="featured-checkbox" value="yes" <?php if ( isset ( $prfx_stored_meta['featured-checkbox'] ) ) checked( $prfx_stored_meta['featured-checkbox'][0], 'yes' ); ?> />
+            <?php _e( 'Featured Item', 'prfx-textdomain' )?>
+        </label>
+
+    </div>
+</p>   
+
+    <?php
+}
+//**for featured blogs slider*//
+/**
+ * Saves the custom meta input
+ */
+function prfx_meta_save( $post_id ) {
+
+    // Checks save status - overcome autosave, etc.
+    $is_autosave = wp_is_post_autosave( $post_id );
+    $is_revision = wp_is_post_revision( $post_id );
+    $is_valid_nonce = ( isset( $_POST[ 'prfx_nonce' ] ) && wp_verify_nonce( $_POST[ 'prfx_nonce' ], basename( __FILE__ ) ) ) ? 'true' : 'false';
+
+    // Exits script depending on save status
+    if ( $is_autosave || $is_revision || !$is_valid_nonce ) {
+        return;
+    }
+
+// Checks for input and saves - save checked as yes and unchecked at no
+if( isset( $_POST[ 'featured-checkbox' ] ) ) {
+    update_post_meta( $post_id, 'featured-checkbox', 'yes' );
+} else {
+    update_post_meta( $post_id, 'featured-checkbox', 'no' );
+}
+
+}
+add_action( 'save_post', 'prfx_meta_save' );
+
+//**for success stories **/
+function prfx_success_callback( $post ) {
+    wp_nonce_field( 'prfx_meta_submit', 'prfx_meta_nonce' );
+    $teaser_loop = get_post_meta($post->ID);
+   ?>
+    <p>
+    <span class="prfx-row-title"><?php _e( 'Want success-stories ', 'prfx-text' )?></span>
+    <div class="prfx-row-content">
+        <label for="success-checkbox">
+            <input type="checkbox" name="success-checkbox" id="success-checkbox" value="yes" <?php if ( isset ( $teaser_loop['success-checkbox'] ) ) checked( $teaser_loop['success-checkbox'][0], 'yes' ); ?> />
+            <?php _e( 'Success Item', 'prfx-text' )?>
+        </label>
+
+    </div>
+</p>   
+<?php
+} 
+
+function prfx_success_save( $post_id ) {
+
+    // Checks save status - overcome autosave, etc.
+   $is_autosave = wp_is_post_autosave( $post->ID, 'prfx_success', true );
+    $is_revision = wp_is_post_revision( $post->ID, 'prfx_success', true );
+	$is_valid_nonce = ( isset( $_POST[ 'prfx_meta_nonce' ] ) && wp_verify_nonce( $_POST[ 'prfx_meta_nonce' ], 'prfx_meta_submit' ) ) ? 'true' : 'false';
+
+    // Exits script depending on save status
+    if ( $is_autosave || $is_revision || !$is_valid_nonce ) {
+        return;
+    }
+if( isset( $_POST[ 'success-checkbox' ] ) ) {
+    update_post_meta( $post_id, 'success-checkbox', 'yes' );
+} else {
+    update_post_meta( $post_id, 'success-checkbox', 'no' );
+}
+
+
+}
+add_action( 'save_post', 'prfx_success_save' );
+
+
+
+//For blog category page
+function makes_time_ago() {
+	return human_time_diff( get_the_time( 'U' ), current_time( 'timestamp' ) ).' '.__( 'ago' );
+} 
+
+function custom_pagination($numpages = '', $pagerange = '', $paged='') {
+
+	  if (empty($pagerange)) {
+	    $pagerange = 2;
+	  }
+
+	  /**
+	   * This first part of our function is a fallback
+	   * for custom pagination inside a regular loop that
+	   * uses the global $paged and global $wp_query variables.
+	   * 
+	   * It's good because we can now override default pagination
+	   * in our theme, and use this function in default quries
+	   * and custom queries.
+	   */
+	  global $paged;
+	  if (empty($paged)) {
+	    $paged = 1;
+	  }
+	  if ($numpages == '') {
+	    global $wp_query;
+	    $numpages = $wp_query->max_num_pages;
+	    if(!$numpages) {
+	        $numpages = 1;
+	    }
+	  }
+
+	  /** 
+	   * We construct the pagination arguments to enter into our paginate_links
+	   * function. 
+	   */
+	  $pagination_args = array(
+	   // 'base'            => get_pagenum_link(1) . '%_%',
+	   // 'format'          => 'page/%#%',
+	    'total'           => $numpages,
+	    'current'         => $paged,
+	    'show_all'        => False,
+	    'end_size'        => 1,
+	    'mid_size'        => $pagerange,
+	    'prev_next'       => True,
+	    'prev_text'       => __('<i class="fa fa-angle-left" aria-hidden="true"></i><span>Previous</span>'),
+	    'next_text'       => __('<span>Next</span><i class="fa fa-angle-double-right" aria-hidden="true"></i>'),
+	    'type'            => 'plain',
+	    'add_args'        => false,
+	    'add_fragment'    => ''
+	  );
+
+	  $paginate_links = paginate_links($pagination_args);
+
+	  if ($paginate_links) {
+	    echo "<nav class='custom-pagination'>";
+	    	echo $paginate_links;
+	      echo "<span class='page-numbers page-num'>Page " . $paged . " of " . $numpages . "</span> ";	      
+	    echo "</nav>";
+	  }
+
+}
+
+//Custom thumbnail for categories
+
+add_action('init', 'my_category_module');
+function my_category_module() {
+ add_action ( 'edit_category_form_fields', 'add_image_cat');
+ add_action ( 'edited_category', 'save_image');
+ }
+
+ function add_image_cat($tag){
+ $category_images = get_option( 'category_images' );
+ $category_image = '';
+ if ( is_array( $category_images ) && array_key_exists( $tag->term_id, $category_images ) ) {
+ $category_image = $category_images[$tag->term_id] ;
+ }
+ ?>
+ <tr>
+ <th scope="row" valign="top"><label for="auteur_revue_image">Image</label></th>
+ <td>
+ <?php
+ if ($category_image !=""){
+ ?>
+ <img src="<?php echo $category_image;?>" alt="" title=""/>
+ <?php
+ }
+ ?>
+ <br/>
+ <input type="text" name="category_image" id="category_image" value="<?php echo $category_image; ?>"/><br />
+ <span>This field allows you to add a picture to illustrate the category. Upload the image from the media tab WordPress and paste its URL here.</span>
+ </td>
+ </tr>
+ <?php
+ }
+
+ function save_image($term_id){
+ if ( isset( $_POST['category_image'] ) ) {
+ //load existing category featured option
+ $category_images = get_option( 'category_images' );
+ //set featured post ID to proper category ID in options array
+ $category_images[$term_id] =  $_POST['category_image'];
+ //save the option array
+ update_option( 'category_images', $category_images );
+ }
+ }
+
+//For Blog Category single page
+add_filter( 'single_template', 'themeslug_single_template' );
+
+function themeslug_single_template( $template ) {
+    global $post;
+
+    $categories = get_the_category();
+
+    if ( ! $categories )
+        return $template; // no need to continue if there are no categories
+
+    $post_type = get_post_type( $post->ID );
+
+    $templates = array();
+
+    foreach ( $categories as $category ) {
+    	if($category->slug == 'blog'){
+        	$templates[] = "single-{$post_type}-{$category->slug}.php";
+        }
+        else {
+        	$templates[] = 'single.php';
+        }
+        
+    }
+
+
+   return locate_template( $templates );
+}
+
+ 
+//This function initializes the meta box.
+ function custom_editor_meta_box() {    
+           add_meta_box ( 
+              'custom-editor', 
+              __('Custom Editor', 'custom-editor') , 
+              'custom_editor',
+              'page'
+           );
+           add_meta_box ( 
+              'custom-outcome', 
+              __('Custom outcome', 'custom-outcome') , 
+              'custom_outcome',
+              'page'
+           );
+  
+ }
+  
+ //Displaying the meta box
+ function custom_editor($post) {          
+          echo "<h3>Content</h3>";
+          $content = get_post_meta($post->ID, 'custom_editor', true);
+          
+          //This function adds the WYSIWYG Editor 
+          wp_editor ( 
+            $content , 
+            'custom_editor', 
+            array ( "media_buttons" => true ) 
+          );
+
+
+           echo "<h3>Add Penske Outcome</h3>";
+          $content_out = get_post_meta($post->ID, 'custom_outcome', true);
+
+           wp_editor ( 
+            $content_out , 
+            'custom_outcome', 
+            array ( "media_buttons" => true ) 
+          );
+  
+ }
+   
+ //This function saves the data you put in the meta box
+ function custom_editor_save_postdata($post_id) {
+         
+    if( isset( $_POST['custom_editor_nonce'] ) && isset( $_POST['portfolio'] ) ) {
+  
+        //Not save if the user hasn't submitted changes
+        if( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+        return;
+        } 
+  
+        // Verifying whether input is coming from the proper form
+        if ( ! wp_verify_nonce ( $_POST['custom_editor_nonce'] ) ) {
+        return;
+        } 
+  
+        // Making sure the user has permission
+        if( 'post' == $_POST['portfolio'] ) {
+               if( ! current_user_can( 'edit_post', $post_id ) ) {
+                    return;
+               }
+        } 
+    } 
+  
+    if (!empty($_POST['custom_editor'])) {
+     
+        $data = $_POST['custom_editor'];
+        update_post_meta($post_id, 'custom_editor', $data);
+         
+    }
+     if (!empty($_POST['custom_outcome'])) {
+     
+        $data = $_POST['custom_outcome'];
+        update_post_meta($post_id, 'custom_outcome', $data);
+         
+    }
+ }
+  
+add_action('save_post', 'custom_editor_save_postdata');
+  
+add_action('admin_init', 'custom_editor_meta_box');
+
+
+// for unattached image url redirect to home page
+
+function attachment_redirect() {
+    global $post;
+    if ( is_attachment() && ( $post->post_parent == 0 ) ) {
+        wp_redirect( home_url() ); 
+       
+    }
+}
+add_action( 'template_redirect', 'attachment_redirect' );
+
+// to remove /letter permalink redirection
+function remove_redirect_guess_404_permalink( $redirect_url ) {
+    if ( is_404() )
+        return false;
+    return $redirect_url;
+}
+add_filter( 'redirect_canonical', 'remove_redirect_guess_404_permalink' );
+
+//remove Shortlink URL
+remove_action('wp_head', 'wp_shortlink_wp_head', 10, 0);
+//remove oembed script
+remove_action( 'wp_head', 'wp_oembed_add_discovery_links', 10 );
+
+// remove wp version param from any enqueued scripts
+function vc_remove_wp_ver_css_js( $src ) {
+    if ( strpos( $src, 'ver=' . get_bloginfo( 'version' ) ) )
+        $src = remove_query_arg( 'ver', $src );
+    return $src;
+}
+add_filter( 'style_loader_src', 'vc_remove_wp_ver_css_js', 9999 );
+add_filter( 'script_loader_src', 'vc_remove_wp_ver_css_js', 9999 );
+
+
+add_action('pre_get_posts','four_post_per_cat');
+
+function four_post_per_cat( $query ) {
+	$this_category = get_queried_object();
+	 $slug = $this_category->slug;
+	
+  if ( ! is_admin() && is_main_query() && is_category() && $slug == 'blog') {
+    $query->set('posts_per_page', 6);
+  }
+}
