@@ -1,0 +1,123 @@
+YOu tube API and Script
+
+/**********************************************
+
+HTML
+<div class="container"> <div id="bannervideo"> </div><div id="thumbnailcontainer" class="thumbnailcontainer"><img id="thumbnail1" class="thumbnail1" /></div><p><a class="start-bannervideo"><img style="filter: invert(100%); -webkit-filter: invert(100%);" src="http://image.flaticon.com/icons/png/512/0/375.png" width="64" /></a></p></div></div>
+
+JS
+ var tag = document.createElement('script');
+  var onPlayerStateChange;
+tag.src = "//www.youtube.com/iframe_api";
+var firstScriptTag = document.getElementsByTagName('script')[0];
+firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+var player;
+var bannervideo;
+
+onYouTubeIframeAPIReady = function () {
+    player = new YT.Player('player', {
+        height: '640',
+        width: '100%',
+        videoId: 'video-id',  // youtube video id
+        playerVars: {
+            'autoplay': 0,
+            'rel': 0,
+            'showinfo': 0
+        },
+        events: {
+            'onStateChange': onPlayerStateChange,
+        }
+    });
+    bannervideo = new YT.Player('bannervideo', {
+        height: 'auto',
+        width: '100%',
+        videoId: 'video-id',  // youtube video id
+        playerVars: {
+            'autoplay': 0,
+            'rel': 0,
+            'showinfo': 0
+        },
+        events: {
+            'onStateChange': onPlayerStateChange1
+        }
+    });
+}
+
+var p = document.getElementById ("player");
+$(p).hide();
+
+var t = document.getElementById ("thumbnail");
+t.src = "http://img.youtube.com/vi/video-id/0.jpg";
+
+
+
+onPlayerStateChange = function (event) {
+    if (event.data == YT.PlayerState.ENDED) {
+        $('.start-video').fadeIn('normal');
+    }
+}
+
+onPlayerStateChange1 = function (event) {
+    if (event.data == YT.PlayerState.ENDED) {
+       $('.start-bannervideo').fadeIn('normal');
+    }
+}
+
+$(document).on('click', '.start-video', function () {
+    $(this).hide();
+    $("#player").show();
+     $("#thumbnail_container").hide();
+    player.playVideo();
+    bannervideo.pauseVideo();
+});
+
+var p1 = document.getElementById ("bannervideo");
+$(p1).hide();
+var t1 = document.getElementById ("thumbnail1");
+t1.src = "http://img.youtube.com/vi/video-id/0.jpg";
+
+$(document).on('click', '.start-bannervideo', function () {
+    $(this).hide();
+    $("#bannervideo").show();
+    $("#thumbnailcontainer").hide();
+    bannervideo.playVideo();
+    player.pauseVideo();
+});
+
+}
+
+*************************************************************************
+js with html
+document.addEventListener("DOMContentLoaded",
+			        function() {
+			            var div, n,
+			                v = document.getElementsByClassName("youtube-player");
+			            for (n = 0; n < v.length; n++) {
+			                div = document.createElement("div");
+			                div.setAttribute("data-id", v[n].dataset.id);
+			                div.innerHTML = labnolThumb(v[n].dataset.id);
+			                div.onclick = labnolIframe;
+			                v[n].appendChild(div);
+			            }
+			        });
+
+			    function labnolThumb(id) {
+			        var thumb = '<img src="https://img.youtube.com/vi/video-id/0.jpg">',
+			            play = '<div class="play"></div>';
+			        return thumb.replace("ID", id) + play;
+			    }
+
+			    function labnolIframe() {
+			        var iframe = document.createElement("iframe");
+			        /*var embed = "https://www.youtube.com/embed/video-id?autoplay=1";
+			        iframe.setAttribute("src", embed.replace("ID", this.dataset.id));
+			        iframe.setAttribute("src", "https://www.youtube.com/embed/" + this.dataset.id + "?autoplay=1");
+			        iframe.setAttribute("frameborder", "0");
+			        iframe.setAttribute("allowfullscreen", "1");
+			        iframe.setAttribute("ID", "bannervid");
+			        iframe.setAttribute("autoplay", "1");
+			        this.parentNode.replaceChild(iframe, this);
+			    }
+
+			    document.write('<div class="container"> <div class="youtube-player" data-id="x1xSThk2kgA"></div></div>');
